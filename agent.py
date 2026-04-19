@@ -69,11 +69,11 @@ def product_lookup(product_name: str) -> str:
     """Look up the price of a product by name.
     Use this when a question asks about product prices from the catalog.
     """
-    with open("products.json") as f:
+    with open("products.json", "r", encoding="utf-8") as f:
         products = json.load(f)
 
     if product_name in products:
-        return str(products[product_name])
+        return f"{products[product_name]:.2f}"
 
     available_products = ", ".join(products.keys())
     return f"Product not found. Available products: {available_products}"
