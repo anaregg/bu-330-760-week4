@@ -1,12 +1,35 @@
 """Math agent that solves questions using tools in a ReAct loop."""
 
 import json
+import os
 
 from dotenv import load_dotenv
 from pydantic_ai import Agent
 from calculator import calculate
 
-load_dotenv()
+
+def configure_api_env() -> None:
+    """Prefer existing OS environment variables.
+    Only load .env if no supported API key is already set.
+    Also map GEMINI_API_KEY -> GOOGLE_API_KEY for compatibility.
+    """
+    existing_keys = (
+        "GOOGLE_API_KEY",
+        "GEMINI_API_KEY",
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+    )
+
+    # First, check the system environment variables for an existing key; if none is found, then read the .env file.
+    if not any(os.getenv(key) for key in existing_keys):
+        load_dotenv()
+
+    # Compatible with GEMINI_API_KEY
+    if os.getenv("GEMINI_API_KEY") and not os.getenv("GOOGLE_API_KEY"):
+        os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
+
+
+configure_api_env()
 
 # Configure your model below. Examples:
 #   "google-gla:gemini-2.5-flash"       (needs GOOGLE_API_KEY)
@@ -41,12 +64,19 @@ def calculator_tool(expression: str) -> str:
 #   3. If not found, return the list of available product names so the agent
 #      can try again with the correct name
 #
-# @agent.tool_plain
-# def product_lookup(product_name: str) -> str:
-#     """Look up the price of a product by name.
-#     Use this when a question asks about product prices from the catalog.
-#     """
-#     ...
+@agent.tool_plain
+def product_lookup(product_name: str) -> str:
+    """Look up the price of a product by name.
+    Use this when a question asks about product prices from the catalog.
+    """
+    with open("products.json") as f:
+        products = json.load(f)
+
+    if product_name in products:
+        return str(products[product_name])
+
+    available_products = ", ".join(products.keys())
+    return f"Product not found. Available products: {available_products}"
 
 
 def load_questions(path: str = "math_questions.md") -> list[str]:
